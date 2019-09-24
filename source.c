@@ -8,14 +8,33 @@
 #define TOK_BUF 45
 
 char* getLine(){
-    char *line = malloc(sizeof(char)*LINE_MAX);
+    char* line = malloc(sizeof(char) * LINE_MAX);
     char c;
-    int i;
-    for(i = 0; i < LINE_MAX && (c = getchar()) != EOF && c != '\n'; i++) {
-        line[i] = c;
+    int bufSize = LINE_MAX;
+    int i = 0;
+
+    while(1)
+    {
+        c = getchar();
+
+        if ( c == EOF || c == '\n')
+        {
+            line[i] = '\0';
+            return line;
+        }
+        else
+        {
+            line[i] = c;
+        }
+
+        i += 1;
+
+        if (i >= bufSize)
+        {
+            bufSize += LINE_MAX;
+            line = realloc(line, bufSize);
+        }
     }
-    line[i + 1] = '\0';
-    return line;
 }
 
 char **getTokens(char *temp){
@@ -46,7 +65,7 @@ void historyFeature(char *historyCmd){
     }
 }
 
-int main(){
+int main(int argc, char* argv[]){
     int status = 1;
     char **args = NULL;
     char *historyCommand = NULL;
@@ -65,9 +84,12 @@ int main(){
         // else if(pid > 0){
 
         // }
+        
+        if (!strcmp(args[0], "exit"))
+            status = 0;
+
         if(!strcmp(args[0],"!!")){
             historyFeature(historyCommand);
-            
         }
         else {
             free(historyCommand);
