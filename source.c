@@ -20,7 +20,6 @@ int getLenOfArgs(char **args){
     return count;
 }
 
-
 char* getLine(){
     char* line = malloc(sizeof(char) * LINE_MAX);
     char c;
@@ -28,9 +27,7 @@ char* getLine(){
     int i = 0;
     
     while(1){
-        
         c = getchar();
-        
         if ( c == EOF || c == '\n')
         {
             line[i] = '\0';
@@ -40,9 +37,7 @@ char* getLine(){
         {
             line[i] = c;
         }
-        
         i += 1;
-        
         if (i >= bufSize)
         {
             bufSize += LINE_MAX;
@@ -67,9 +62,7 @@ char **getTokens(char *temp, bool *isRunBackground) {
         position++;
         token = strtok(NULL, " |\t\r\n\a");
     }
-    
     tokens[position] = NULL;
-    
     return tokens;
 }
 void deallocateMemory(char ** args){
@@ -82,7 +75,6 @@ void excutingCommand(char** args){
     execvp(args[0], args);
     exit(EXIT_SUCCESS);
 }
-
 void historyFeature(char *historyCmd){
     if(!historyCmd){
         printf("No commands in history.\n");
@@ -91,7 +83,6 @@ void historyFeature(char *historyCmd){
         printf("%s\n",historyCmd);
     }
 }
-
 int main(){
     int status = 1;
     char **args = NULL;
@@ -101,7 +92,6 @@ int main(){
         char *input_line = getLine();
         bool isRunBackground = false;
         args = getTokens(input_line, &isRunBackground);
-        
         if(args[0] == NULL){
             continue;
         }
@@ -130,9 +120,8 @@ int main(){
                     break;
             }
         }
-        
         free(input_line);
+        deallocateMemory(args);
     }
-    deallocateMemory(args);
     return 0;
 }
