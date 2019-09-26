@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <string.h>
 
 #define LINE_MAX 80
@@ -53,9 +54,35 @@ char **getTokens(char *temp){
     return tokens;
 }
 
-void excutingCommand(char** args){
+void executingCommand(char** args, int block){
+    pid_t pid, wpid;
+    int status;
+    int result;
+
+    pid = fork();
+
+    if(pid < 0){
+        perror("osh");
+    }
+    else if(pid == 0){
+        result = execvp(args[0], args);
+        if (result == -1)
+            perror("osh");
+        exit(result);
+    }
+    
+    if(block)
+    {
+       result = waitpid(pid, &status, 0);
+    }
+    else
+    {
+        printf("pid = %d\n", pid);
+    }
     
 }
+
+
 void historyFeature(char *historyCmd){
     if(!historyCmd){
         printf("No commands in history.\n");
@@ -65,28 +92,38 @@ void historyFeature(char *historyCmd){
     }
 }
 
+int check_ampersand(char** args)
+{
+    int i = 0;
+    for ( i ; args[i] != NULL; i++)
+    {
+        if(args[i][0] == '&')
+        {
+            args[i] = NULL;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char* argv[]){
     int status = 1;
+    int block;
     char **args = NULL;
     char *historyCommand = NULL;
     while(status == 1){
         printf("osh> ");
         char *input_line = getLine();
         args = getTokens(input_line);
-        //pid_t pid = fork();
-
-        // if(pid == -1){
-        //     printf("Child process could not be createld!\n");
-        // }
-        // else if(pid == 0){
-        //     excutingCommand(args);
-        // }
-        // else if(pid > 0){
-
-        // }
         
-        if (!strcmp(args[0], "exit"))
+        if (!strcmp(args[0], "exit")){
             status = 0;
+            exit(0);
+        }
+            
+
+        // check for an ampersand
+        block = (check_ampersand(args) == 0);
 
         if(!strcmp(args[0],"!!")){
             historyFeature(historyCommand);
@@ -96,8 +133,10 @@ int main(int argc, char* argv[]){
             historyCommand = malloc(sizeof(char) * (strlen(input_line)+1));
             strcpy(historyCommand, input_line);
         }
+        
+        executingCommand(args, block);
         free(input_line);
     }
- 
+    free(args);
     return 0;
 }
