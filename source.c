@@ -3,6 +3,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -20,7 +24,6 @@ int getLenOfArgs(char **args){
     for(count; args[count] != NULL; count++);
     return count;
 }
-
 
 char* getLine(){
     char* line = malloc(sizeof(char) * LINE_MAX);
@@ -74,17 +77,33 @@ char **getTokens(char *temp, bool *isRunBackground) {
     return tokens;
 }
 
-void executingCommand(char** args, int block){
+void executingCommand(char** args, int block, int redir, char* direct){
     pid_t pid, wpid;
     int status;
     int result;
-
     pid = fork();
-
+    
     if(pid < 0){
         perror("osh");
     }
     else if(pid == 0){
+        int fd;
+        //printf("Yes yes yes %d\n", redir);
+        if (direct)     
+            if(redir < 0)
+            {
+                printf("Redirect input");
+                fd = open(direct, O_RDONLY);
+                dup2(fd, STDIN_FILENO);
+            }
+            else if ( redir > 0)
+            {
+                fd = open(direct, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+                dup2(fd, STDOUT_FILENO);                
+            }    
+        close(fd);
+        free(direct);
+            
         result = execvp(args[0], args);
         if (result == -1)
             perror("osh");
@@ -102,18 +121,12 @@ void executingCommand(char** args, int block){
     
 }
 
-
 void deallocateMemory(char ** args){
     int len = getLenOfArgs(args);
     for(int i=0;i< len;i++){
         free(args[i]);
     }
     free(args);
-}
-
-void excutingCommand(char** args){
-    execvp(args[0], args);
-    exit(EXIT_SUCCESS);
 }
 
 void historyFeature(char *historyCmd){
@@ -125,15 +138,42 @@ void historyFeature(char *historyCmd){
     }
 }
 
+
+// check_redirect > 0: for redirecting output
+// check_redirect < 0: for redirecting input
+// check_redirect = 0: not redirect
+int check_redirect(char** args, char** direct){
+    int i = 0;
+    int res = 0;
+    for( i; args[i] != NULL; i++){
+        if (args[i][0] == '>')
+            res = 1;
+        if (args[i][0] == '<')
+            res = -1;
+        if (res != 0)
+        {
+            (*direct) = strdup(args[i + 1]);
+            args[i] = NULL, args[i + 1] = NULL;
+            //printf("check_redirect: %d", res);
+            return res;
+        }
+    }
+    return res;
+}
+
+
 int main(int argc, char* argv[]){
     int status = 1;
     char **args = NULL;
     char *historyCommand = NULL;
     while(status == 1){
         msg_promt();
-        char *input_line = getLine();
+        char *input_line = getLine(), *direct = NULL;
+        // Check for &
         bool isRunBackground = false;
         args = getTokens(input_line, &isRunBackground);
+        // Check for >, <
+        int redir = check_redirect(args, &direct);
         if(args[0] == NULL){
             continue;
         }
@@ -146,22 +186,7 @@ int main(int argc, char* argv[]){
             free(historyCommand);
             historyCommand = malloc(sizeof(char) * (strlen(input_line)+1));
             strcpy(historyCommand, input_line);
-            // pid_t pid;
-            
-            // switch(pid = fork()) {
-            //     case -1:
-            //         printf("Child process could not be created!\n");
-            //         exit(EXIT_FAILURE);
-            //         break;
-            //     case 0:
-            //         excutingCommand(args);
-            //         break;
-            //     default:
-            //         if(!isRunBackground)
-            //             wait(NULL);
-            //         break;
-            // }
-            executingCommand(args, isRunBackground);
+            executingCommand(args, isRunBackground, redir, direct);
         }
         free(input_line);
         deallocateMemory(args);
