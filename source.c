@@ -14,47 +14,38 @@
 #define TOK_BUF 45
 #define READ 0
 #define WRITE 1
+
 void msg_promt(){
     char buff[] = "osh> ";
     printf("%s", buff);
     fflush(stdout);
 }
-
 int getLenOfArgs(char **args){
     int count = 0;
     for(; args[count] != NULL; count++);
     return count;
 }
-
 char* getLine(){
     char* line = malloc(sizeof(char) * LINE_MAX);
     char c;
     int bufSize = LINE_MAX;
     int i = 0;
-    
     while(1){
-        
         c = getchar();
-        
-        if ( c == EOF || c == '\n')
-        {
+        if ( c == EOF || c == '\n'){
             line[i] = '\0';
             return line;
         }
-        else
-        {
+        else{
             line[i] = c;
         }
         i += 1;
-        
-        if (i >= bufSize)
-        {
+        if (i >= bufSize){
             bufSize += LINE_MAX;
             line = realloc(line, bufSize);
         }
     }
 }
-
 char **getTokens(char *temp, bool *isRunBackground) {
     char *string = malloc(sizeof(char) * (strlen(temp)+1));
     strcpy(string,temp);
@@ -72,9 +63,7 @@ char **getTokens(char *temp, bool *isRunBackground) {
         position++;
         token = strtok(NULL, " \t\r\n\a");
     }
-    
     tokens[position] = NULL;
-    
     return tokens;
 }
 char **getPipeTokens(char *temp) {
@@ -90,18 +79,14 @@ char **getPipeTokens(char *temp) {
         position++;
         token = strtok(NULL, "|\t\r\n\a");
     }
-    
     tokens[position] = NULL;
-    
     return tokens;
 }
-
 void executingCommand(char** args, int block, int redir, char* direct){
     pid_t pid, wpid;
     int status;
     int result;
     pid = fork();
-    
     if(pid < 0){
         perror("osh");
     }
@@ -122,7 +107,6 @@ void executingCommand(char** args, int block, int redir, char* direct){
             }
         close(fd);
         free(direct);
-        
         result = execvp(args[0], args);
         if (result == -1)
             perror("osh");
@@ -135,7 +119,6 @@ void executingCommand(char** args, int block, int redir, char* direct){
         printf("pid = %d\n", pid);
     }
 }
-
 void deallocateMemory(char ** args){
     int len = getLenOfArgs(args);
     for(int i=0;i< len;i++){
@@ -143,7 +126,6 @@ void deallocateMemory(char ** args){
     }
     free(args);
 }
-
 void historyFeature(char *historyCmd){
     if(!historyCmd){
         printf("No commands in history.\n");
@@ -152,8 +134,6 @@ void historyFeature(char *historyCmd){
         printf("%s\n",historyCmd);
     }
 }
-
-
 // check_redirect > 0: for redirecting output
 // check_redirect < 0: for redirecting input
 // check_redirect = 0: not redirect
@@ -161,6 +141,7 @@ int check_redirect(char** args, char** direct){
     int i = 0;
     int res = 0;
     for( ; args[i] != NULL; i++){
+
         if (args[i][0] == '>')
             res = 1;
         if (args[i][0] == '<')
@@ -175,7 +156,6 @@ int check_redirect(char** args, char** direct){
     }
     return res;
 }
-
 void communicationViaPipe(char **args){ // args[0]: left command, args[1]: right command
     int pipefd[2];
     pid_t childpid1, childpid2;
@@ -248,8 +228,7 @@ int main(int argc, char* argv[]){
                 historyCommand = malloc(sizeof(char) * (strlen(input_line)+1));
                 strcpy(historyCommand, input_line);
                 executingCommand(args, isRunBackground, redir, direct);
-            }
-            
+            }   
         }
         else{
             free(historyCommand);
