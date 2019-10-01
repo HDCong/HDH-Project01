@@ -1,21 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdbool.h>
+#include "shell-feature.h"
 
-#define LINE_MAX 80
-#define TOK_BUF 45
-#define READ 0
-#define WRITE 1
-
-void msg_promt(){
+void showMessage(){
     char buff[] = "osh> ";
     printf("%s", buff);
     fflush(stdout);
@@ -32,15 +17,18 @@ char* getLine(){
     int i = 0;
     while(1){
         c = getchar();
-        if ( c == EOF || c == '\n'){
+        if ( c == EOF || c == '\n')
+        {
             line[i] = '\0';
             return line;
         }
-        else{
+        else
+        {
             line[i] = c;
         }
         i += 1;
-        if (i >= bufSize){
+        if (i >= bufSize)
+        {
             bufSize += LINE_MAX;
             line = realloc(line, bufSize);
         }
@@ -83,7 +71,7 @@ char **getPipeTokens(char *temp) {
     return tokens;
 }
 void executingCommand(char** args, int block, int redir, char* direct){
-    pid_t pid, wpid;
+    pid_t pid;
     int status;
     int result;
     pid = fork();
@@ -107,6 +95,7 @@ void executingCommand(char** args, int block, int redir, char* direct){
             }
         close(fd);
         free(direct);
+        
         result = execvp(args[0], args);
         if (result == -1)
             perror("osh");
@@ -141,7 +130,6 @@ int check_redirect(char** args, char** direct){
     int i = 0;
     int res = 0;
     for( ; args[i] != NULL; i++){
-
         if (args[i][0] == '>')
             res = 1;
         if (args[i][0] == '<')
@@ -156,6 +144,7 @@ int check_redirect(char** args, char** direct){
     }
     return res;
 }
+
 void communicationViaPipe(char **args){ // args[0]: left command, args[1]: right command
     int pipefd[2];
     pid_t childpid1, childpid2;
@@ -163,7 +152,7 @@ void communicationViaPipe(char **args){ // args[0]: left command, args[1]: right
     childpid1= fork();
     if(childpid1==0)
     {
-       // close(pipefd[READ]);
+        close(pipefd[READ]);
         dup2(pipefd[WRITE],STDOUT_FILENO);
         bool flagTemp = false;
         char **argsLeftCommand = getTokens(args[0], &flagTemp);
@@ -180,10 +169,10 @@ void communicationViaPipe(char **args){ // args[0]: left command, args[1]: right
     }
     close(pipefd[READ]);
     close(pipefd[WRITE]);
-
+    
     waitpid(childpid1, NULL, 0);
     waitpid(childpid2, NULL, 0);
-
+    
 }
 bool isValidCommand(char *inputLine){
     int check=0;
@@ -194,53 +183,4 @@ bool isValidCommand(char *inputLine){
             check++;
     }
     return check < 2;
-}
-int main(int argc, char* argv[]){
-    int status = 1;
-    char **args = NULL;
-    char *historyCommand = NULL;
-    while(status == 1){
-        msg_promt();
-        char *input_line = getLine(), *direct = NULL;
-        if(!isValidCommand(input_line))
-        {
-            printf("'%s': command not found\n", input_line);
-            continue;
-        }
-        if(!strstr(input_line,"|")){
-            // Check for &
-            bool isRunBackground = false;
-            args = getTokens(input_line, &isRunBackground);
-            // Check for >, <
-            int redir = check_redirect(args, &direct);
-            if(args[0] == NULL){
-                continue;
-            }
-            if (!strcmp(args[0], "exit")){
-                status = 0;
-                continue;
-            }
-            if(!strcmp(args[0],"!!")){
-                historyFeature(historyCommand);
-            }
-            else {
-                free(historyCommand);
-                historyCommand = malloc(sizeof(char) * (strlen(input_line)+1));
-                strcpy(historyCommand, input_line);
-                executingCommand(args, isRunBackground, redir, direct);
-            }   
-        }
-        else{
-            free(historyCommand);
-            historyCommand = malloc(sizeof(char) * (strlen(input_line)+1));
-            strcpy(historyCommand, input_line);
-            args= getPipeTokens(input_line);
-            communicationViaPipe(args);
-        }
-        free(input_line);
-        deallocateMemory(args);
-    }
-    free(historyCommand);
-    deallocateMemory(args);
-    return 0;
 }
